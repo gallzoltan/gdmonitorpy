@@ -1,0 +1,28 @@
+[project]
+name = "gdmonitor"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Gáll Zoltán", email = "gallzoltan@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "huspacy>=0.12.1",
+    "pdfplumber>=0.11.6",
+    "regex>=2024.11.6",
+]
+
+[project.scripts]
+gdmonitor = "gdmonitor:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "fpdf>=1.7.2",
+    "pip>=25.1.1",
+    "pytest>=8.3.5",
+]
