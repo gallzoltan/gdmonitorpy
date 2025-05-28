@@ -1,7 +1,7 @@
 [project]
 name = "gdmonitor"
 version = "0.1.0"
-description = "Add your description here"
+description = "Monitoring tool for the Hungarian Government Gazette (Hivatalos Közlöny)"
 readme = "README.md"
 authors = [
     { name = "Gáll Zoltán", email = "gallzoltan@gmail.com" }
