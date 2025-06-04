@@ -33,6 +33,7 @@ class GazetteRepository:
         CREATE TABLE IF NOT EXISTS summary (
             id INTEGER PRIMARY KEY,
             gazette_id INTEGER NOT NULL,
+            gdecision_title TEXT,
             relevant_score INTEGER DEFAULT 0,
             keyword_matches TEXT,
             summary TEXT NOT NULL,
@@ -89,22 +90,30 @@ class GazetteRepository:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute(
-            "UPDATE gazettes SET analyzed = 1, relevant = ? WHERE id = ?",
-            (1 if is_relevant else 0, gazette_id)
-        )
+        if is_relevant:
+            # Ha releváns, akkor frissítjük mindkét mezőt
+            cursor.execute(
+                "UPDATE gazettes SET analyzed = 1, relevant = 1 WHERE id = ?",
+                (gazette_id,)
+            )
+        else:
+            # Ha nem releváns, csak az analyzed mezőt frissítjük, a relevant-et nem érintjük
+            cursor.execute(
+                "UPDATE gazettes SET analyzed = 1 WHERE id = ? AND relevant = 0",
+                (gazette_id,)
+            )
         
         conn.commit()
         conn.close()
     
-    def save_summary(self, gazette_id: int, relevant_score: int, keyword_matches: str, summary: str):
+    def save_summary(self, gazette_id: int, gdecision_title: str, relevant_score: int, keyword_matches: str, summary: str):
         """Összefoglaló mentése"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute(
-            "INSERT INTO summary (gazette_id, relevant_score, keyword_matches, summary) VALUES (?, ?, ?, ?)",
-            (gazette_id, relevant_score, keyword_matches, summary)
+            "INSERT INTO summary (gazette_id, gdecision_title, relevant_score, keyword_matches, summary) VALUES (?, ?, ?, ?, ?)",
+            (gazette_id, gdecision_title, relevant_score, keyword_matches, summary)
         )
         
         conn.commit()

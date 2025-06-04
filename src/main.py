@@ -66,17 +66,16 @@ def main():
                         logger.info(f"Nincs kormányhatározat a közlönyben: {gazette['title']}")
                         repository.mark_as_analyzed(gazette['id'], is_relevant=False)
                         continue
-                    logger.info(f"Kormányhatározatok száma: {len(gdecisions)}")
+                    # logger.info(f"Kormányhatározatok száma: {len(gdecisions)}")
                     for i, gdecision in enumerate(gdecisions, 1):
-                        # logger.info(f"Kormhat {i}. {gdecision['title']}")
                         result = analyze_gdecision(gdecision)
                         if result:
-                            logger.info(f"Releváns: {gdecision['title']} pontszám: {result['relevance_score']}")
+                            logger.info(f"Releváns: {gdecision['title']} pontszám: {result['relevance_score']}")                            
+                            repository.save_summary(gazette['id'], gdecision['title'], result['relevance_score'], result['keyword_matches'], result['summary'])
                             repository.mark_as_analyzed(gazette['id'], is_relevant=True)
-                            repository.save_summary(gazette['id'], result['relevance_score'], result['keyword_matches'], result['summary'])
                         else:
                             logger.info(f"Nem releváns: {gdecision['title']}")
-                            repository.mark_as_analyzed(gazette['id'], is_relevant=False)                        
+                            repository.mark_as_analyzed(gazette['id'], is_relevant=False)                                                                       
                 else:
                     logger.error(f"Nem sikerült a PDF szöveg kinyerése: {gazette['filename']}")
                     repository.mark_as_analyzed(gazette['id'], is_relevant=False)
