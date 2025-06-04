@@ -33,6 +33,8 @@ class GazetteRepository:
         CREATE TABLE IF NOT EXISTS summary (
             id INTEGER PRIMARY KEY,
             gazette_id INTEGER NOT NULL,
+            relevant_score INTEGER DEFAULT 0,
+            keyword_matches TEXT,
             summary TEXT NOT NULL,
             FOREIGN KEY (gazette_id) REFERENCES gazettes(id)
         );           
@@ -95,14 +97,14 @@ class GazetteRepository:
         conn.commit()
         conn.close()
     
-    def save_summary(self, gazette_id: int, summary: str):
+    def save_summary(self, gazette_id: int, relevant_score: int, keyword_matches: str, summary: str):
         """Összefoglaló mentése"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute(
-            "INSERT INTO summary (gazette_id, summary) VALUES (?, ?)",
-            (gazette_id, summary)
+            "INSERT INTO summary (gazette_id, relevant_score, keyword_matches, summary) VALUES (?, ?, ?, ?)",
+            (gazette_id, relevant_score, keyword_matches, summary)
         )
         
         conn.commit()

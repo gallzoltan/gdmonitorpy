@@ -1,6 +1,10 @@
 import re
 import huspacy
+import logging
 
+logger = logging.getLogger(__name__)
+# Magyar Közlöny kormányhatározatok elemzése önkormányzati vonatkozású tartalom szempontjából
+# Huszár Péter által készített magyar nyelvi feldolgozó könyvtár
 # NLP modell betöltése
 try:
     # nlp = spacy.load("hu_core_news_lg")    
@@ -12,15 +16,14 @@ except:
     # huspacy.cli.download("hu_core_news_lg")
     nlp = huspacy.load("hu_core_news_lg")
 
-def analyze_resolutions(resolutions):
+def analyze_gdecision(gdecision):
     """
     Kormányhatározatok elemzése önkormányzati vonatkozású tartalom szempontjából.
     A címben való előfordulás kétszeres súlyt kap
     """
-
     keywords = [
         "ix. helyi önkormányzatok",
-        "települési önkormányzatok", 
+        "települési önkormányzatok",
         "önkormányzatok adósságot keletkeztető",
         "gazdasági társaságok adósságot keletkeztető",
         "helyi önkormányzat",
@@ -29,43 +32,87 @@ def analyze_resolutions(resolutions):
         "adósságot keletkeztető ügyletek",
         "iparűzési adó"
     ]
+
+    relevance_score = 0
+    keyword_matches = []
+
+    # Ellenőrizzük a címben és a tartalomban a kulcsszavakat
+    for keyword in keywords:
+        title_matches = len(re.findall(r'\b' + keyword + r'\w*\b', gdecision['title'].lower()))
+        content_matches = len(re.findall(r'\b' + keyword + r'\w*\b', gdecision['content'].lower()))
+
+        if title_matches > 0 or content_matches > 0:
+            keyword_matches.append(keyword)
+            relevance_score += (title_matches * 2) + content_matches
+
+    if relevance_score > 0:
+        doc = nlp(gdecision['content'])
+
+        # Egyszerű összefoglaló készítése: az első pár mondat
+        summary = '. '.join([sent.text for sent in list(doc.sents)[:3]])
+
+        return {
+            'gdecision': gdecision,
+            'relevance_score': relevance_score,
+            'keyword_matches': ', '.join(keyword_matches),
+            'summary': summary
+        }
+    return None
+
+# def analyze_resolutions(resolutions):
+#     """
+#     Kormányhatározatok elemzése önkormányzati vonatkozású tartalom szempontjából.
+#     A címben való előfordulás kétszeres súlyt kap
+#     """
+
+#     keywords = [
+#         "ix. helyi önkormányzatok",
+#         "települési önkormányzatok", 
+#         "önkormányzatok adósságot keletkeztető",
+#         "gazdasági társaságok adósságot keletkeztető",
+#         "helyi önkormányzat",
+#         "önkormányzati adósság",
+#         "önkormányzati hitelfelvétel",
+#         "adósságot keletkeztető ügyletek",
+#         "iparűzési adó"
+#     ]
     
-    relevant_resolutions = []
+#     relevant_resolutions = []
     
-    for resolution in resolutions:
-        relevance_score = 0
-        keyword_matches = []
+#     for resolution in resolutions:
+#         relevance_score = 0
+#         keyword_matches = []
         
-        # Ellenőrizzük a címben és a tartalomban a kulcsszavakat
-        for keyword in keywords:
-            title_matches = len(re.findall(r'\b' + keyword + r'\w*\b', resolution['title'].lower()))
-            content_matches = len(re.findall(r'\b' + keyword + r'\w*\b', resolution['content'].lower()))
+#         # Ellenőrizzük a címben és a tartalomban a kulcsszavakat
+#         for keyword in keywords:
+#             title_matches = len(re.findall(r'\b' + keyword + r'\w*\b', resolution['title'].lower()))
+#             content_matches = len(re.findall(r'\b' + keyword + r'\w*\b', resolution['content'].lower()))
             
-            if title_matches > 0 or content_matches > 0:
-                keyword_matches.append({
-                    'keyword': keyword,
-                    'title_count': title_matches,
-                    'content_count': content_matches
-                })
-                relevance_score += (title_matches * 2) + content_matches
+#             if title_matches > 0 or content_matches > 0:
+#                 keyword_matches.append({
+#                     'keyword': keyword,
+#                     'title_count': title_matches,
+#                     'content_count': content_matches
+#                 })
+#                 relevance_score += (title_matches * 2) + content_matches
                 
-        if relevance_score > 0:
-            doc = nlp(resolution['content'])
+#         if relevance_score > 0:
+#             doc = nlp(resolution['content'])
             
-            # Egyszerű összefoglaló készítése: az első pár mondat
-            summary = '. '.join([sent.text for sent in list(doc.sents)[:3]])
+#             # Egyszerű összefoglaló készítése: az első pár mondat
+#             summary = '. '.join([sent.text for sent in list(doc.sents)[:3]])
             
-            relevant_resolutions.append({
-                'resolution': resolution,
-                'relevance_score': relevance_score,
-                'keyword_matches': keyword_matches,
-                'summary': summary
-            })
+#             relevant_resolutions.append({
+#                 'resolution': resolution,
+#                 'relevance_score': relevance_score,
+#                 'keyword_matches': keyword_matches,
+#                 'summary': summary
+#             })
     
-    # Eredmények rendezése relevancia szerint
-    relevant_resolutions.sort(key=lambda x: x['relevance_score'], reverse=True)
+#     # Eredmények rendezése relevancia szerint
+#     relevant_resolutions.sort(key=lambda x: x['relevance_score'], reverse=True)
     
-    return {
-        'total_resolutions': len(resolutions),
-        'relevant_resolutions': relevant_resolutions
-    }
+#     return {
+#         'total_resolutions': len(resolutions),
+#         'relevant_resolutions': relevant_resolutions
+#     }

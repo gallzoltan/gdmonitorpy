@@ -1,4 +1,3 @@
-import sqlite3
 import logging
 import requests
 import certifi
@@ -15,7 +14,7 @@ class GazetteFetcher:
     
     FEED_URL = "https://magyarkozlony.hu/feed"
     DB_FILE = "gazettes.db"
-    DOWNLOAD_PATH = "downloads"
+    DOWNLOAD_DIR = "downloads"
     CERTIFICATE_PATH = "certificates"
     
     def __init__(self, 
@@ -35,7 +34,7 @@ class GazetteFetcher:
         
         self.FEED_URL = feed_url if feed_url else self.FEED_URL
         self.DB_FILE = db_file if db_file else self.DB_FILE
-        self.DOWNLOAD_PATH = download_path if download_path else self.DOWNLOAD_PATH
+        self.DOWNLOAD_DIR = download_path if download_path else self.DOWNLOAD_DIR
         self.CERTIFICATE_PATH = certificate_path if certificate_path else self.CERTIFICATE_PATH
 
         # Dátum szűrő beállítása
@@ -55,7 +54,7 @@ class GazetteFetcher:
             
         # Adatbázis és letöltési könyvtár elérési útvonala
         self.db_path = self.base_dir / self.DB_FILE
-        self.download_path = self.base_dir / self.DOWNLOAD_PATH
+        self.download_path = self.base_dir / self.DOWNLOAD_DIR
         
         # Letöltési könyvtár létrehozása, ha nem létezik
         if not self.download_path.exists():
@@ -186,7 +185,7 @@ class GazetteFetcher:
             filepath = self.download_path / filename
             
             # PDF letöltése
-            response = self.session.get(pdf_url, stream=True, timeout=60, verify=True)
+            response = self.session.get(pdf_url, stream=True, timeout=60, verify=False)
             response.raise_for_status()
             
             with open(filepath, 'wb') as f:

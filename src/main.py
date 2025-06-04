@@ -1,9 +1,13 @@
 import os
 import logging
 import argparse
-from fetcher import GazetteFetcher
+from pathlib import Path
 from dotenv import load_dotenv
+from fetcher import GazetteFetcher
+from repository import GazetteRepository
+from gdmonitor import extract_text_from_pdf, extract_resolutions, analyze_gdecision
 
+logger = logging.getLogger(__name__)
 
 def setup_logging():
     """Beállítja a naplózást"""
@@ -26,7 +30,6 @@ def setup_fetcher():
     since_date = os.getenv('SINCE_DATE')  # YYYY-MM-DD formátum
     return GazetteFetcher(feed_url=feed_url, db_file=db_file, download_path=download_path, since_date=since_date)
 
-
 def main():
     setup_logging()
     load_dotenv()
@@ -43,16 +46,43 @@ def main():
     fetcher = setup_fetcher()
     downloaded = fetcher.fetch_new_gazettes()
     if downloaded:
-        print(f"{len(downloaded)} új Magyar Közlöny került letöltésre:")
+        logger.info(f"{len(downloaded)} új Magyar Közlöny került letöltésre:")
         for filename in downloaded:
-            print(f"- {filename}")
-    else:
-        print("Nem került letöltésre új Magyar Közlöny.")  
+            logger.info(f"Letöltött közlöny: {filename}")
+    else: 
+        logger.info("Nem került letöltésre új Magyar Közlöny.")
     
     if args.analyze:
-        print("Önkormányzati tartalom elemzése...")
-        
-                  
+        repository = GazetteRepository(fetcher.db_path)
+        unanalyzed_gazettes = repository.get_unanalyzed_gazettes()
+        if unanalyzed_gazettes:
+            logger.info(f"{len(unanalyzed_gazettes)} közlöny még nem lett elemezve.")            
+            for gazette in unanalyzed_gazettes:
+                logger.info(f"Elemzés: {gazette['title']} ({gazette['publication_date']})")               
+                pdf_text = extract_text_from_pdf(fetcher.base_dir / fetcher.download_path / gazette['filename'])
+                if pdf_text:
+                    gdecisions = extract_resolutions(pdf_text)
+                    if not gdecisions:
+                        logger.info(f"Nincs kormányhatározat a közlönyben: {gazette['title']}")
+                        repository.mark_as_analyzed(gazette['id'], is_relevant=False)
+                        continue
+                    logger.info(f"Kormányhatározatok száma: {len(gdecisions)}")
+                    for i, gdecision in enumerate(gdecisions, 1):
+                        # logger.info(f"Kormhat {i}. {gdecision['title']}")
+                        result = analyze_gdecision(gdecision)
+                        if result:
+                            logger.info(f"Releváns: {gdecision['title']} pontszám: {result['relevance_score']}")
+                            repository.mark_as_analyzed(gazette['id'], is_relevant=True)
+                            repository.save_summary(gazette['id'], result['relevance_score'], result['keyword_matches'], result['summary'])
+                        else:
+                            logger.info(f"Nem releváns: {gdecision['title']}")
+                            repository.mark_as_analyzed(gazette['id'], is_relevant=False)                        
+                else:
+                    logger.error(f"Nem sikerült a PDF szöveg kinyerése: {gazette['filename']}")
+                    repository.mark_as_analyzed(gazette['id'], is_relevant=False)
+        else:
+            logger.info("Minden közlöny elemezve van már.")
+
 
 if __name__ == "__main__":
     main()

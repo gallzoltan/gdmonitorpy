@@ -1,28 +1,26 @@
 import pdfplumber
+import logging
 import re
 
-def extract_text_from_pdf(pdf_path):
+logger = logging.getLogger(__name__)
+
+def extract_text_from_pdf(pdf_path: str) -> str:
     """
-    Szöveg kinyerése a PDF fájlból.
+    Kivonatolja a szöveget egy PDF fájlból.
+    Args:
+        pdf_path (str): A PDF fájl elérési útja.
     """
-    full_text = ""
+    
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            # print(f"PDF oldalak száma: {len(pdf.pages)}")
+            text = ''
             for i, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text:
-                    full_text += text + "\n"
-                # print(f"  - {i+1}. oldal: {len(text) if text else 0} karakter")
-        
-        # Némi tisztítás a szövegen
-        # Töröljük a túl sok whitespace-t
-        full_text = re.sub(r'\s+', ' ', full_text)
-        # Keressünk kormányhatározatot jelző szöveget
-        korm_matches = re.findall(r'Korm[\.|\s]+hat[á|a]rozat', full_text)
-        print(f"'Korm. határozat' típusú kifejezések száma: {len(korm_matches)}")
-        
-        return full_text
+                text += page.extract_text() + '\n' or ''
+            logger.debug(f" - {i+1} oldal: {len(text) if text else 0} karakter")
+
+        # Némi tisztítás a szövegen, töröljük a túl sok whitespace-t
+        text = re.sub(r'\s+', ' ', text)
+        return text
     except Exception as e:
-        print(f"Hiba a PDF feldolgozása közben: {e}")
+        print(f"Hiba a PDF feldolgozása során: {e}")
         return ""
