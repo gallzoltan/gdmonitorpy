@@ -47,7 +47,12 @@ def main():
         for filename in downloaded:
             print(f"- {filename}")
     else:
-        print("Nem került letöltésre új Magyar Közlöny.")        
+        print("Nem került letöltésre új Magyar Közlöny.")  
+    
+    if args.analyze:
+        print("Önkormányzati tartalom elemzése...")
+        
+                  
 
 if __name__ == "__main__":
     main()

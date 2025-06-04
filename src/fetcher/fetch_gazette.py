@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
+from repository import GazetteRepository
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ class GazetteFetcher:
         if not self.download_path.exists():
             self.download_path.mkdir(parents=True)
             
-        # Adatbázis inicializálása
-        self._init_database()
+        # Repository inicializálása
+        self.repository = GazetteRepository(self.db_path)
 
         self.session = requests.Session()
         self.session.headers.update({
@@ -73,34 +74,6 @@ class GazetteFetcher:
         else:
             logger.warning(f"SSL tanúsítvány fájl nem található: {pem_file}")
             self.session.verify = certifi.where()  # Visszaesés a rendszer tanúsítványokra
-        
-    def _init_database(self):
-        """Adatbázis inicializálása, ha még nem létezik"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.executescript('''
-        CREATE TABLE IF NOT EXISTS gazettes (
-            id INTEGER PRIMARY KEY,
-            title TEXT NOT NULL,
-            publication_date TEXT NOT NULL,
-            url TEXT NOT NULL UNIQUE,
-            filename TEXT NOT NULL,
-            download_date TEXT NOT NULL,
-            analyzed INTEGER DEFAULT 0,
-            relevant INTEGER DEFAULT 0,  
-            sent_email INTEGER DEFAULT 0       
-        );
-        CREATE TABLE IF NOT EXISTS summary (
-            id INTEGER PRIMARY KEY,
-            gazette_id INTEGER NOT NULL,
-            summary TEXT NOT NULL,
-            FOREIGN KEY (gazette_id) REFERENCES gazettes(id)
-        );           
-        ''')
-        
-        conn.commit()
-        conn.close()
 
     def _parse_pub_date(self, pub_date_str: str) -> Optional[datetime]:
         """
@@ -183,24 +156,7 @@ class GazetteFetcher:
             return []
     
     def is_already_downloaded(self, url: str) -> bool:
-        """
-        Ellenőrzi, hogy egy adott URL-t már letöltöttünk-e
-        
-        Args:
-            url: Az ellenőrizendő URL
-            
-        Returns:
-            True, ha már letöltöttük, egyébként False
-        """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT id FROM gazettes WHERE url = ?", (url,))
-        result = cursor.fetchone()
-        
-        conn.close()
-        
-        return result is not None
+        return self.repository.is_already_downloaded(url)
     
     def download_gazette(self, entry: Dict) -> Tuple[bool, Optional[str]]:
         """
@@ -259,25 +215,12 @@ class GazetteFetcher:
         return f"{clean_title}_{timestamp}.pdf"
     
     def _save_to_database(self, entry: Dict, filename: str) -> None:
-        """
-        Letöltött közlöny mentése az adatbázisba
-        
-        Args:
-            entry: A közlöny adatai
-            filename: A letöltött fájl neve
-        """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        now = datetime.now().isoformat()
-        
-        cursor.execute(
-            "INSERT INTO gazettes (title, publication_date, url, filename, download_date) VALUES (?, ?, ?, ?, ?)",
-            (entry['title'], entry['published'], entry['url'], filename, now)
+        self.repository.save_gazette(
+            entry['title'], 
+            entry['published'], 
+            entry['url'], 
+            filename
         )
-        
-        conn.commit()
-        conn.close()
     
     def fetch_new_gazettes(self) -> List[str]:
         """
