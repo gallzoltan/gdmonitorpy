@@ -2,10 +2,16 @@ import os
 import logging
 import argparse
 from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv
-from fetcher import GazetteFetcher
-from repository import GazetteRepository
-from gdmonitor import extract_text_from_pdf, extract_resolutions, analyze_gdecision
+from gdmodule.fetcher import GazetteFetcher
+from gdmodule.repository import GazetteRepository
+from gdmodule.gdmonitor import (
+    extract_text_from_pdf,
+    extract_resolutions,
+    analyze_gdecision
+)
+from gdmodule.sender import EmailSender
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +21,32 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+
+def update_env_file(key, value):
+    """Frissíti az .env fájlt egy kulcs-érték párral"""
+    env_path = Path(__file__).parent / '.env'
+    
+    # Beolvassa a meglévő tartalmat
+    lines = []
+    if env_path.exists():
+        with open(env_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+    
+    # Megkeresi és frissíti a kulcsot, vagy hozzáadja ha nem létezik
+    updated = False
+    for i, line in enumerate(lines):
+        if line.strip().startswith(f"{key}="):
+            lines[i] = f"{key}={value}\n"
+            updated = True
+            break
+    
+    # Ha nem találta meg, hozzáadja a végére
+    if not updated:
+        lines.append(f"{key}={value}\n")
+    
+    # Visszaírja a fájlt
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
 
 def setup_fetcher():
     """Beállítja a Magyar Közlöny letöltő objektumot"""
@@ -32,7 +64,11 @@ def setup_fetcher():
 
 def main():
     setup_logging()
-    load_dotenv()
+    
+    # .env fájl betöltése a megfelelő útvonalról
+    env_path = Path(__file__).parent / '.env'
+    load_dotenv(env_path)
+    
     parser = argparse.ArgumentParser(description='PDF kormányhatározat feldolgozó')
     parser.add_argument('--analyze', action='store_true', help='Önkormányzati tartalom elemzése')
     parser.add_argument('--email', action='store_true', help='Email küldése az eredményekről')
@@ -49,9 +85,12 @@ def main():
         logger.info(f"{len(downloaded)} új Magyar Közlöny került letöltésre:")
         for filename in downloaded:
             logger.info(f"Letöltött közlöny: {filename}")
+        # Frissítjük a SINCE_DATE értéket az .env fájlban is
+        new_date = datetime.now().strftime("%Y-%m-%d")
+        update_env_file('SINCE_DATE', new_date)
     else: 
         logger.info("Nem került letöltésre új Magyar Közlöny.")
-    
+        
     if args.analyze:
         repository = GazetteRepository(fetcher.db_path)
         unanalyzed_gazettes = repository.get_unanalyzed_gazettes()
@@ -81,6 +120,15 @@ def main():
                     repository.mark_as_analyzed(gazette['id'], is_relevant=False)
         else:
             logger.info("Minden közlöny elemezve van már.")
+    
+    if args.email:
+        # Email küldés logika itt
+        msg_server = os.getenv('MSG_SERVER')
+        msg_port = int(os.getenv('MSG_PORT', 8025))  # Alapértelmezett port 8025
+        db_path = Path(os.getenv('DB_FILE', 'gazettes.db'))
+        email_sender = EmailSender(msg_server, msg_port, db_path)
+        print(email_sender.create_content())
+        logger.info("Email küldése az eredményekről nincs implementálva.")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-from repository import GazetteRepository
+from gdmodule.repository import GazetteRepository
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class GazetteFetcher:
             # Mentés az adatbázisba
             self._save_to_database(entry, filename)
             
-            logger.info(f"Sikeresen letöltve: {entry['title']} -> {filename}")
+            # logger.info(f"Sikeresen letöltve: {entry['title']} -> {filename}")
             return True, filename
             
         except Exception as e:

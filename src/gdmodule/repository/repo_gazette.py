@@ -105,6 +105,19 @@ class GazetteRepository:
         
         conn.commit()
         conn.close()
+
+    def mark_all_sent_email(self):
+        """Közlöny megjelölése, hogy emailt küldtünk róla"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "UPDATE gazettes SET sent_email = 1 WHERE id = ?",
+            (gazette_id,)
+        )
+        
+        conn.commit()
+        conn.close()
     
     def save_summary(self, gazette_id: int, gdecision_title: str, relevant_score: int, keyword_matches: str, summary: str):
         """Összefoglaló mentése"""
@@ -118,3 +131,23 @@ class GazetteRepository:
         
         conn.commit()
         conn.close()
+    
+    def get_gazettes_for_email(self) -> Optional[Dict]:
+        """Közlöny lekérése ID alapján"""
+        query = """
+            SELECT g.id, g.title, g.publication_date, g.url, s.gdecision_title, s.relevant_score, s.keyword_matches, s.summary 
+            FROM gazettes g 
+            LEFT JOIN summary s ON g.id=s.gazette_id
+            WHERE g.relevant=1 AND g.sent_email=0;
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        conn.close()
+
+        if rows:
+            return [dict(zip([col[0] for col in cursor.description], row)) for row in rows]
+        return None
