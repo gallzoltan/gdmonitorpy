@@ -53,14 +53,14 @@ def setup_fetcher():
     feed_url = os.getenv('FEED_URL')
     if not feed_url:
         raise ValueError("A FEED_URL környezeti változó nincs beállítva.")
-    db_file = os.getenv('DB_FILE')
-    if not db_file:
+    db_path = os.getenv('DB_PATH')
+    if not db_path:
         raise ValueError("A DB_PATH környezeti változó nincs beállítva.")
     download_path = os.getenv('DOWNLOAD_PATH')
     if not os.path.exists(download_path):
         os.makedirs(download_path)
     since_date = os.getenv('SINCE_DATE')  # YYYY-MM-DD formátum
-    return GazetteFetcher(feed_url=feed_url, db_file=db_file, download_path=download_path, since_date=since_date)
+    return GazetteFetcher(feed_url=feed_url, db_path=db_path, download_path=download_path, since_date=since_date)
 
 def main():
     setup_logging()
@@ -125,10 +125,19 @@ def main():
         # Email küldés logika itt
         msg_server = os.getenv('MSG_SERVER')
         msg_port = int(os.getenv('MSG_PORT', 8025))  # Alapértelmezett port 8025
-        db_path = Path(os.getenv('DB_FILE', 'gazettes.db'))
-        email_sender = EmailSender(msg_server, msg_port, db_path)
-        print(email_sender.create_content())
-        logger.info("Email küldése az eredményekről nincs implementálva.")
+        db_path = Path(os.getenv('DB_PATH', 'gazettes.db'))
+        email_sender = EmailSender(msg_server=msg_server, msg_port=msg_port, db_path=db_path)
+        
+        # Email címek tisztítása - üres stringek eltávolítása
+        to_recipients = [email.strip() for email in os.getenv('EMAIL_TO', '').split(',') if email.strip()]
+        cc_recipients = [email.strip() for email in os.getenv('EMAIL_CC', '').split(',') if email.strip()]
+        bcc_recipients = [email.strip() for email in os.getenv('EMAIL_BCC', '').split(',') if email.strip()]
+    
+        email_sender.send_email(
+            to_recipients=to_recipients,
+            cc_recipients=cc_recipients,
+            bcc_recipients=bcc_recipients   
+        )
 
 
 if __name__ == "__main__":

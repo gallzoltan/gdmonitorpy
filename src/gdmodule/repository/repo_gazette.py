@@ -106,16 +106,16 @@ class GazetteRepository:
         conn.commit()
         conn.close()
 
-    def mark_all_sent_email(self):
+    def mark_all_sent_email(self, gazette_ids: List[int]):
         """Közlöny megjelölése, hogy emailt küldtünk róla"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        cursor.execute(
+
+        cursor.executemany(
             "UPDATE gazettes SET sent_email = 1 WHERE id = ?",
-            (gazette_id,)
+            [(gazette_id,) for gazette_id in gazette_ids]
         )
-        
+
         conn.commit()
         conn.close()
     

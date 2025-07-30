@@ -19,7 +19,7 @@ class GazetteFetcher:
     
     def __init__(self, 
                  feed_url:str,
-                 db_file:str, 
+                 db_path:str, 
                  download_path:str,
                  certificate_path: Optional[str] = None, 
                  base_dir: Optional[str] = None, 
@@ -33,7 +33,7 @@ class GazetteFetcher:
         """
         
         self.FEED_URL = feed_url if feed_url else self.FEED_URL
-        self.DB_FILE = db_file if db_file else self.DB_FILE
+        self.DB_PATH = db_path if db_path else self.DB_PATH
         self.DOWNLOAD_DIR = download_path if download_path else self.DOWNLOAD_DIR
         self.CERTIFICATE_PATH = certificate_path if certificate_path else self.CERTIFICATE_PATH
 
@@ -53,7 +53,7 @@ class GazetteFetcher:
             self.base_dir = Path.cwd()
             
         # Adatbázis és letöltési könyvtár elérési útvonala
-        self.db_path = self.base_dir / self.DB_FILE
+        self.db_path = self.base_dir / self.DB_PATH
         self.download_path = self.base_dir / self.DOWNLOAD_DIR
         
         # Letöltési könyvtár létrehozása, ha nem létezik
