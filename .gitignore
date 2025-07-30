@@ -7,7 +7,11 @@ wheels/
 downloads/
 samples/
 *.egg-info
+
+# Environment files
 .env
+src/.env
+**/.env
 
 # Virtual environments
 .venv
