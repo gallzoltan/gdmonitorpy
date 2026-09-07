@@ -1,0 +1,57 @@
+# Podman Compose definíció a gdmonitorhoz.
+#
+# A gdmonitor batch job: elindul, lefut, kilép — nem szolgáltatás. Ezért a
+# megszokott használat a `run`, nem az `up`: a `run --rm` visszaadja a konténer
+# kilépési kódját (0 siker, 1 váratlan hiba, 2 konfigurációs hiba), amire a
+# systemd épül; az `up` ezt elnyelné.
+#
+#   podman-compose build
+#   podman-compose run --rm gdmonitor              # a teljes éles futás
+#   podman-compose run --rm gdmonitor gdmonitor    # csak letöltés (száraz futás)
+#
+# A hoszt oldala két környezeti változóval hangolható, így ugyanez a fájl
+# szolgál ki fejlesztést és éles futást:
+#   GDMONITOR_ENV   az env fájl útvonala  (alapértelmezés: ./deploy/gdmonitor.env)
+#   GDMONITOR_DATA  az adatkönyvtár       (alapértelmezés: ./data)
+
+name: gdmonitor
+
+# A podman-compose alapból közös podba teszi a projekt konténereit, ami ütközik
+# a network_mode: host beállítással. Ez a kapcsoló kihagyja a pod létrehozását.
+x-podman:
+  in_pod: false
+
+services:
+  gdmonitor:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: localhost/gdmonitor:latest
+    container_name: gdmonitor
+
+    # systemd EnvironmentFile-lal azonos formátum: az = köré nem kerülhet
+    # szóköz, és az idézőjelek az érték részévé válnának.
+    env_file:
+      - ${GDMONITOR_ENV:-./deploy/gdmonitor.env}
+
+    # Az adatbázis és a letöltések a hosztról jönnek. A :Z kapcsoló kell,
+    # mert az AlmaLinux 9 SELinuxa enforcing módban van.
+    volumes:
+      - ${GDMONITOR_DATA:-./data}:/data:Z
+
+    # A hoszt felhasználóját a konténerbeli uid 1000-re képezzük le, így a
+    # kiírt fájlok tulajdonosa a futtató felhasználó marad.
+    userns_mode: "keep-id:uid=1000,gid=1000"
+
+    # A levélküldő relay a hoszt localhostján figyel. A batch job csak kifelé
+    # kommunikál, portot nem nyit.
+    network_mode: host
+
+    # Batch job: egy lefutás után kilép, újraindítani nem kell. Az ütemezést
+    # a systemd timer adja.
+    restart: "no"
+
+    logging:
+      driver: journald
+
+    command: ["gdmonitor", "--analyze", "--email"]

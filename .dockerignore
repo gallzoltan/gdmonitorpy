@@ -13,3 +13,5 @@ tests
 Containerfile
 .dockerignore
 deploy
+compose.yaml
+data

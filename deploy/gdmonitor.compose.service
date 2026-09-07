@@ -1,0 +1,29 @@
+# A Quadlet (gdmonitor.container) alternatívája: ugyanazt a futást indítja,
+# csak podman-compose-on keresztül. A kettő közül CSAK AZ EGYIKET telepítsd,
+# mert mindkettő gdmonitor.service néven jelenik meg.
+#
+# Helye rootless futtatásnál:
+#   ~/.config/systemd/user/gdmonitor.service
+# Módosítás után: systemctl --user daemon-reload
+#
+# A gdmonitor.timer változtatás nélkül ezt is elindítja (Unit=gdmonitor.service).
+[Unit]
+Description=Magyar Közlöny figyelő batch job (podman-compose)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Egy lefutás, aztán vége. A `run --rm` továbbadja a konténer kilépési kódját,
+# így a systemd valóban failed állapotot mutat 1-es és 2-es kódnál.
+Type=oneshot
+WorkingDirectory=%h/gdmonitor
+Environment=GDMONITOR_ENV=%h/.config/gdmonitor/gdmonitor.env
+Environment=GDMONITOR_DATA=%h/gdmonitor/data
+ExecStart=/usr/bin/podman-compose -f %h/gdmonitor/compose.yaml run --rm gdmonitor
+
+# A közlönyök letöltése és elemzése lassú tud lenni, de nem végtelen.
+TimeoutStartSec=1800
+SyslogIdentifier=gdmonitor
+
+# [Install] szakasz szándékosan nincs: boot-kor nem indul el, az ütemezést
+# a gdmonitor.timer adja.

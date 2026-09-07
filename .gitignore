@@ -15,3 +15,7 @@ src/.env
 
 # Virtual environments
 .venv
+
+# Compose adatkönyvtár és éles env fájl
+data/
+deploy/gdmonitor.env

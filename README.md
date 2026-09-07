@@ -50,11 +50,18 @@ uv run pytest tests/test_sentence_splitter.py::test_does_not_split_on_house_numb
 
 ## Éles üzem
 
-Konténerben fut, rootless Podmannel, systemd timerrel ütemezve.
-A telepítés lépései: [`deploy/README.md`](deploy/README.md).
+Konténerben fut, rootless Podmannel, systemd timerrel ütemezve. A konténert
+Podman Quadlet (`deploy/gdmonitor.container`) vagy a gyökérben lévő
+`compose.yaml` definiálja; a telepítés lépései:
+[`deploy/README.md`](deploy/README.md).
 
 ```bash
-podman build -t gdmonitor:latest .
+podman build -t gdmonitor:latest .   # vagy: podman-compose build
+
+# Batch job, ezért `run` és nem `up`: a `run --rm` továbbadja a kilépési kódot.
+# Kell hozzá egy env fájl (alapból ./deploy/gdmonitor.env, lásd
+# deploy/gdmonitor.env.example) és egy adatkönyvtár (alapból ./data).
+podman-compose run --rm gdmonitor
 ```
 
 ## Felépítés

@@ -22,6 +22,7 @@ uv run pytest
 uv run pytest tests/test_sentence_splitter.py::test_does_not_split_on_house_number
 uv build
 podman build -t gdmonitor:latest .   # uses Containerfile
+podman-compose run --rm gdmonitor    # same run via compose.yaml
 ```
 
 Exit codes matter: `0` success, `1` unexpected error, `2` configuration error. systemd
@@ -84,5 +85,11 @@ the flags only add stages.
 - The console script is `gdmodule.cli:main`. Keep the entry point inside the package —
   `[tool.hatch.build.targets.wheel] packages = ["src/gdmodule"]` means anything outside
   `src/gdmodule` is missing from the wheel, which is what broke the old `main:main`.
+- Deployment has two interchangeable container definitions: the Quadlet
+  (`deploy/gdmonitor.container`) and the root `compose.yaml` (+
+  `deploy/gdmonitor.compose.service`). Both install as `gdmonitor.service`, so only
+  one may be present; the timer is shared. Keep them in sync — volume, `:Z`,
+  `keep-id` userns, host network, journald. With compose always use `run --rm`,
+  never `up`: `up` swallows the exit code the systemd unit depends on.
 - `database/gazettes.db` is committed and holds real run history; `downloads/` and
   `samples/` are gitignored but present locally and useful for manual checks.
