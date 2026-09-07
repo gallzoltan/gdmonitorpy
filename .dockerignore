@@ -1,0 +1,15 @@
+.venv
+.git
+.gitignore
+__pycache__
+*.py[oc]
+*.egg-info
+dist
+build
+downloads
+samples
+database
+tests
+Containerfile
+.dockerignore
+deploy

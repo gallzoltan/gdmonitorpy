@@ -1,4 +1,4 @@
-from gdmonitor.pdf_processor import extract_text_from_pdf
+from gdmodule.gdmonitor.pdf_processor import extract_text_from_pdf
 
 def test_extract_text_from_pdf(tmp_path):
     # Készítsünk egy egyszerű PDF-et teszteléshez

@@ -1,5 +1,5 @@
 import datetime
-from gdmonitor.resulation_extractor import extract_resolutions
+from gdmodule.gdmonitor.resulation_extractor import extract_resolutions
 
 def test_extract_resolutions():
     ''' 

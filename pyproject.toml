@@ -8,15 +8,14 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "huspacy>=0.12.1",
+    "certifi>=2025.7.14",
     "pdfplumber>=0.11.6",
     "python-dotenv>=1.1.0",
-    "regex>=2024.11.6",
     "requests>=2.32.4",
 ]
 
 [project.scripts]
-gdmonitor = "main:main"
+gdmonitor = "gdmodule.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,6 +23,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gdmodule"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [dependency-groups]
 dev = [

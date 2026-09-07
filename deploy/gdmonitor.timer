@@ -1,0 +1,19 @@
+# Helye rootless futtatásnál: ~/.config/systemd/user/gdmonitor.timer
+# Engedélyezés: systemctl --user enable --now gdmonitor.timer
+[Unit]
+Description=A Magyar Közlöny figyelő időzítése
+
+[Timer]
+# IGAZÍTSD a jelenlegi crontab bejegyzésedhez.
+OnCalendar=*-*-* 07,13,19:15:00
+
+# A cronnal ellentétben a kihagyott futás pótlódik (leállt gép, karbantartás).
+Persistent=true
+
+# Ne pont másodpercre essen minden futás a feed szerverére.
+RandomizedDelaySec=300
+
+Unit=gdmonitor.service
+
+[Install]
+WantedBy=timers.target

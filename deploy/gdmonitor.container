@@ -1,0 +1,32 @@
+# Podman Quadlet definíció. Helye rootless futtatásnál:
+#   ~/.config/containers/systemd/gdmonitor.container
+# Módosítás után: systemctl --user daemon-reload
+[Unit]
+Description=Magyar Közlöny figyelő batch job
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=localhost/gdmonitor:latest
+ContainerName=gdmonitor
+EnvironmentFile=%h/.config/gdmonitor/gdmonitor.env
+
+# Az adatbázis és a letöltések a hosztról jönnek. A :Z kapcsoló kell,
+# mert az AlmaLinux 9 SELinuxa enforcing módban van.
+Volume=%h/gdmonitor/data:/data:Z
+
+# A hoszt felhasználóját a konténerbeli uid 1000-re képezzük le, így a
+# kiírt fájlok tulajdonosa a jelenlegi cron user marad.
+UserNS=keep-id:uid=1000,gid=1000
+
+# A levélküldő relay a hoszt localhostján figyel. A batch job csak kifelé
+# kommunikál, portot nem nyit.
+Network=host
+
+LogDriver=journald
+
+[Service]
+# A Quadlet alapból Type=notify szolgáltatást generál, amit egy lefutás után
+# kilépő batch konténer sosem elégítene ki. Az időzítést a .timer adja,
+# ezért [Install] szakasz szándékosan nincs: boot-kor nem indul el.
+Type=oneshot

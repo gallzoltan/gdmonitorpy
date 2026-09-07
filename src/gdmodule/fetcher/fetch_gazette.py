@@ -15,7 +15,9 @@ class GazetteFetcher:
     FEED_URL = "https://magyarkozlony.hu/feed"
     DB_FILE = "gazettes.db"
     DOWNLOAD_DIR = "downloads"
-    CERTIFICATE_PATH = "certificates"
+
+    # Könyvtárként megadott CERTIFICATE_PATH esetén ezt a fájlt keressük.
+    CA_BUNDLE_FILE = "ca-bundle.pem"
     
     def __init__(self, 
                  feed_url:str,
@@ -33,9 +35,8 @@ class GazetteFetcher:
         """
         
         self.FEED_URL = feed_url if feed_url else self.FEED_URL
-        self.DB_PATH = db_path if db_path else self.DB_PATH
+        self.DB_PATH = db_path if db_path else self.DB_FILE
         self.DOWNLOAD_DIR = download_path if download_path else self.DOWNLOAD_DIR
-        self.CERTIFICATE_PATH = certificate_path if certificate_path else self.CERTIFICATE_PATH
 
         # Dátum szűrő beállítása
         self.since_date = None
@@ -67,12 +68,39 @@ class GazetteFetcher:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
-        pem_file = self.base_dir / self.CERTIFICATE_PATH / 'magyarkozlony-hu.pem'
-        if pem_file.exists():
-            self.session.verify = str(pem_file)
-        else:
-            logger.warning(f"SSL tanúsítvány fájl nem található: {pem_file}")
-            self.session.verify = certifi.where()  # Visszaesés a rendszer tanúsítványokra
+        self.session.verify = self._resolve_ca_bundle(certificate_path)
+
+    def _resolve_ca_bundle(self, certificate_path: Optional[str]) -> str:
+        """Kiválasztja a TLS ellenőrzéshez használt CA köteget.
+
+        Alapértelmezés a certifi nyilvános gyökértanúsítvány-készlete: a
+        magyarkozlony.hu publikusan hitelesített tanúsítványt használ, ehhez
+        nem kell saját köteg. Saját köteg akkor kell, ha a gép TLS-t bontó
+        proxy mögött van; ilyenkor a CERTIFICATE_PATH mutasson a köteg
+        fájlra vagy az azt tartalmazó könyvtárra.
+
+        Figyelem: a kiszolgáló saját (leaf) tanúsítványa NEM alkalmas CA
+        kötegnek, mert nem tartalmazza a kibocsátói láncot — a verifikáció
+        "unable to get local issuer certificate" hibára fut vele.
+        """
+        if not certificate_path:
+            return certifi.where()
+
+        path = Path(certificate_path)
+        if not path.is_absolute():
+            path = self.base_dir / path
+        if path.is_dir():
+            path = path / self.CA_BUNDLE_FILE
+
+        if path.is_file():
+            logger.info("Saját CA köteg használata: %s", path)
+            return str(path)
+
+        logger.warning(
+            "A megadott CA köteg nem található (%s), a certifi gyökértanúsítványai lesznek használva",
+            path,
+        )
+        return certifi.where()
 
     def _parse_pub_date(self, pub_date_str: str) -> Optional[datetime]:
         """
@@ -104,7 +132,7 @@ class GazetteFetcher:
             A Magyar Közlöny bejegyzések listája
         """
         try:
-            response = self.session.get(self.FEED_URL, timeout=30, verify=False)
+            response = self.session.get(self.FEED_URL, timeout=30)
             response.raise_for_status()
             
             # XML feldolgozása
@@ -129,7 +157,7 @@ class GazetteFetcher:
                     
                     # Dátum szűrés alkalmazása
                     if self.since_date and published_date:
-                        if published_date.date() <= self.since_date.date():
+                        if published_date.date() < self.since_date.date():
                             logger.debug(f"Kihagyás (régebbi): {title} - {published_date.date()}")
                             continue
                     
@@ -185,7 +213,7 @@ class GazetteFetcher:
             filepath = self.download_path / filename
             
             # PDF letöltése
-            response = self.session.get(pdf_url, stream=True, timeout=60, verify=False)
+            response = self.session.get(pdf_url, stream=True, timeout=60)
             response.raise_for_status()
             
             with open(filepath, 'wb') as f:

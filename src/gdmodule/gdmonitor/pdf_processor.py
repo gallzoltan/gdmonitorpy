@@ -1,26 +1,41 @@
-import pdfplumber
+"""PDF szövegkinyerés."""
+
 import logging
 import re
 
+import pdfplumber
+
 logger = logging.getLogger(__name__)
 
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """
-    Kivonatolja a szöveget egy PDF fájlból.
+
+def extract_text_from_pdf(pdf_path):
+    """Kivonatolja a szöveget egy PDF fájlból.
+
     Args:
-        pdf_path (str): A PDF fájl elérési útja.
+        pdf_path: A PDF fájl elérési útja.
+
+    Returns:
+        A PDF szövege egy sorba fűzve, hiba esetén üres string.
     """
-    
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            text = ''
-            for i, page in enumerate(pdf.pages):
-                text += page.extract_text() + '\n' or ''
-            logger.debug(f" - {i+1} oldal: {len(text) if text else 0} karakter")
+            parts = []
+            page_count = 0
+            for page in pdf.pages:
+                page_count += 1
+                # A pdfplumber None-t ad vissza a szöveg nélküli (például
+                # szkennelt) oldalakra. Enélkül az összefűzés TypeError-t
+                # dobna, és a tág except miatt az egész közlöny elveszne.
+                parts.append(page.extract_text() or "")
+            logger.debug(
+                "%s - %d oldal: %d karakter",
+                pdf_path,
+                page_count,
+                sum(len(part) for part in parts),
+            )
 
-        # Némi tisztítás a szövegen, töröljük a túl sok whitespace-t
-        text = re.sub(r'\s+', ' ', text)
-        return text
+        # Némi tisztítás a szövegen, töröljük a túl sok whitespace-t.
+        return re.sub(r"\s+", " ", "\n".join(parts))
     except Exception as e:
-        print(f"Hiba a PDF feldolgozása során: {e}")
+        logger.error("Hiba a PDF feldolgozása során (%s): %s", pdf_path, e)
         return ""
