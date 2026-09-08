@@ -134,7 +134,7 @@ GDMONITOR_DATA=~/gdmonitor/data \
 
 # Teljes futás kézzel
 systemctl --user start gdmonitor.service
-journalctl --user -u gdmonitor.service -n 50 --no-pager
+journalctl --user-unit gdmonitor.service -n 50 --no-pager
 
 # Időzítés állapota
 systemctl --user list-timers gdmonitor.timer
@@ -175,3 +175,30 @@ Ha a compose futás a pod létrehozásán akad el, a `network_mode: host` ütkö
 a podman-compose alapértelmezett pod-jával. Ezt oldja fel a compose fájl
 `x-podman: in_pod: false` blokkja; ha a telepített verzió ezt a kulcsot még
 nem ismeri, a `--in-pod=false` kapcsoló teszi ugyanezt.
+
+A napló olvasásánál a `journalctl --user` **nem szűrő, hanem fájlválasztás**:
+csak a per-user journal fájlokat (`user-<uid>.journal`) nyitja meg. Ha a gépen
+ilyen nincs — nincs `/var/log/journal`, vagy a journald `SplitMode` beállítása
+nem uid szerint bont —, akkor `No journal files were found` a válasz, miközben
+a sorok ott vannak a rendszer-journalben. Ezért `--user-unit` a helyes kapcsoló:
+az `_SYSTEMD_USER_UNIT=` mezőre illeszt, függetlenül attól, melyik fájlban ül az
+üzenet. Ugyanezért mutat a `systemctl --user status` naplósorokat akkor is,
+amikor a `journalctl --user` üresen tér vissza.
+
+Ha `/var/log/journal` nem létezik, a napló csak a memóriában él, és
+újraindításkor elvész a teljes futási előzmény. Egy batch jobnál, aminek ez az
+egyetlen nyoma, érdemes tartóssá tenni (root kell hozzá):
+
+```bash
+sudo mkdir -p /var/log/journal
+sudo systemd-tmpfiles --create --prefix /var/log/journal
+sudo systemctl restart systemd-journald
+```
+
+Ha a timer `LAST` oszlopa üresen marad és magától sosem indul futás, a linger
+hiányzik: kijelentkezés után leáll a felhasználó systemd példánya, és vele
+együtt az időzítés is. Ellenőrzés:
+
+```bash
+loginctl show-user "$USER" --property=Linger
+```

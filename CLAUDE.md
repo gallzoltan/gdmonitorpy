@@ -89,7 +89,13 @@ the flags only add stages.
   (`deploy/gdmonitor.container`) and the root `compose.yaml` (+
   `deploy/gdmonitor.compose.service`). Both install as `gdmonitor.service`, so only
   one may be present; the timer is shared. Keep them in sync — volume, `:Z`,
-  `keep-id` userns, host network, journald. With compose always use `run --rm`,
+  `keep-id` userns, host network, logging. With compose always use `run --rm`,
   never `up`: `up` swallows the exit code the systemd unit depends on.
+- **Don't set a journald log driver on the container.** The batch container runs
+  attached, so systemd already captures its stdout into the journal; a journald
+  log driver writes every line a second time. The Quadlet uses
+  `LogDriver=passthrough`, and `compose.yaml` sets no `logging:` driver at all.
+  Reading the log needs `journalctl --user-unit`, not `journalctl --user -u`:
+  `--user` selects per-user journal *files*, which may not exist on the host.
 - `database/gazettes.db` is committed and holds real run history; `downloads/` and
   `samples/` are gitignored but present locally and useful for manual checks.

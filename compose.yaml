@@ -51,7 +51,9 @@ services:
     # a systemd timer adja.
     restart: "no"
 
-    logging:
-      driver: journald
+    # Naplózó driver szándékosan nincs. A `run --rm` csatolt módban fut, a
+    # konténer kimenetét a hívó kapja meg — systemd unit alól a journal, kézzel
+    # a terminál. A journald driver ehhez képest minden sort másodszor is a
+    # naplóba írna. A Quadletben ugyanez a `LogDriver=passthrough`.
 
     command: ["gdmonitor", "--analyze", "--email"]

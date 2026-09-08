@@ -23,7 +23,11 @@ UserNS=keep-id:uid=1000,gid=1000
 # kommunikál, portot nem nyit.
 Network=host
 
-LogDriver=journald
+# A konténer kimenete közvetlenül a unit stdout-jára megy, onnan a journalbe.
+# A journald driverrel minden sor kétszer került a naplóba: egyszer a log driver
+# írta ki, egyszer pedig a csatolt `podman run` stdoutját kapta el a systemd.
+# Cserébe a `podman logs` nem működik, ami egy --rm batch jobnál úgysem használható.
+LogDriver=passthrough
 
 [Service]
 # A Quadlet alapból Type=notify szolgáltatást generál, amit egy lefutás után
